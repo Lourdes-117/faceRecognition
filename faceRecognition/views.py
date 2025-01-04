@@ -49,8 +49,8 @@ def face_recognition(request):
         # Perform the verification with DeepFace
         try:
             result = DeepFace.verify(
-                temp_original.name, #/var/folders/pp/89v1_1616v9gdvcfvfxc2z680000gn/T/tmpe4o67se5.jpg
-                temp_current.name #/var/folders/pp/89v1_1616v9gdvcfvfxc2z680000gn/T/tmp9rjrtlo3.jpg
+                temp_original.name,
+                temp_current.name
             )
 
             # Close the BytesIO objects
