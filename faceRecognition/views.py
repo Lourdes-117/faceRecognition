@@ -1,3 +1,4 @@
+import os
 import tempfile
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from deepface import DeepFace
@@ -8,19 +9,19 @@ from io import BytesIO
 def face_recognition(request):
     print("Request received")
 
-    print(request.FILES)
+    try:
+        # Read the image files into BytesIO objects
+        original_img_io = BytesIO(request.FILES['original_pic'].read())
+        current_img_io = BytesIO(request.FILES['current_pic'].read())
 
-    original_img = request.FILES.get('original_pic')
-
-    print("Original image received")
-    current_img = request.FILES.get('current_pic')
-
-    print("Current image received")
-    
-    if original_img is None or current_img is None:
-        print("Invalid input. Both 'original_pic' and 'current_pic' are required.")
+        # Reset the file pointer to the beginning
+        original_img_io.seek(0)
+        current_img_io.seek(0)
+    except KeyError:
         return HttpResponseBadRequest("Invalid input. Both 'original_pic' and 'current_pic' are required.")
-    
+    except Exception as e:
+        return HttpResponseBadRequest(f"Error reading image data: {str(e)}")
+
     print("Processing images")
     try:
         # Create temporary files
@@ -28,27 +29,40 @@ def face_recognition(request):
              tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_current:
             print("Temporary files created")
 
-            print(original_img.size)
-            print(current_img.size)
-            
             # Save images to temporary files
-            temp_original.write(original_img.read())
-            temp_current.write(current_img.read())
-            
-            # Make sure to close the files so DeepFace can read them
-            temp_original.close()
-            temp_current.close()
-            
-            # Perform the verification with DeepFace
+            temp_original.write(original_img_io.read())
+            temp_current.write(current_img_io.read())
+
+            # Log the file paths
+            print(f"Original image path: {temp_original.name}")
+            print(f"Current image path: {temp_current.name}")
+
+            # Close the files to ensure data is written
+            # temp_original.flush()
+            # temp_current.flush()
+
+        # Check if files exist
+        if not os.path.exists(temp_original.name) or not os.path.exists(temp_current.name):
+            print("Temporary files do not exist.")
+            return HttpResponseBadRequest("Error creating temporary files.")
+
+        # Perform the verification with DeepFace
+        try:
             result = DeepFace.verify(
                 temp_original.name,
                 temp_current.name
             )
 
-            print("Verification completed") 
-            print(request)
+            # Close the BytesIO objects
+            # original_img_io.close()
+            # current_img_io.close()
 
-        return JsonResponse(result)
+            print("Verification completed")
+            print(result)
+            return JsonResponse(result)
+        except Exception as e:
+            print(f"Error during DeepFace verification: {str(e)}")
+            return HttpResponseBadRequest(f"Error during verification: {str(e)}")
 
     except Exception as e:
         return HttpResponseBadRequest(f"Error processing images: {str(e)}")
